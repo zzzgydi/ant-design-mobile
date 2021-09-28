@@ -4,6 +4,7 @@ import React, {
   ReactNode,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -92,22 +93,27 @@ export const Swiper = forwardRef(
         )
         loop = false
       }
+
+      const swiperRef = useRef<HTMLDivElement>(null)
       const trackRef = useRef<HTMLDivElement>(null)
+      const offsetRef = useRef(0)
+
       function getWidth() {
         const track = trackRef.current
         if (!track) return 0
         return track.offsetWidth
       }
 
-      let centeredOffset = 0
-      if (props.centered) {
-        const slideWidth = parseFloat(
-          (props.style && props.style['--slide-width']) || '0'
-        )
-        if (!Number.isNaN(slideWidth) && slideWidth > 0) {
-          centeredOffset = (100 - slideWidth) / (2 * slideWidth)
+      useLayoutEffect(() => {
+        offsetRef.current = 0
+        if (props.centered) {
+          if (!swiperRef.current || !trackRef.current) return
+
+          const slideWidth =
+            (trackRef.current.offsetWidth / swiperRef.current.offsetWidth) * 100
+          offsetRef.current = (100 - slideWidth) / (2 * slideWidth)
         }
-      }
+      }, [props.centered])
 
       const [current, setCurrent] = useState(props.defaultIndex)
 
@@ -115,7 +121,7 @@ export const Swiper = forwardRef(
 
       const [{ x }, api] = useSpring(
         () => ({
-          x: (bound(current, 0, count - 1) - centeredOffset) * 100,
+          x: (bound(current, 0, count - 1) - offsetRef.current) * 100,
           config: { tension: 200, friction: 30 },
           onRest: () => {
             if (draggingRef.current) return
@@ -129,7 +135,7 @@ export const Swiper = forwardRef(
             })
           },
         }),
-        [count]
+        [count, offsetRef.current]
       )
 
       const bind = useDrag(
@@ -161,8 +167,8 @@ export const Swiper = forwardRef(
             if (loop) return {}
             const width = getWidth()
             return {
-              left: 0 - centeredOffset * width,
-              right: (count - 1 - centeredOffset) * width,
+              left: 0 - offsetRef.current * width,
+              right: (count - 1 - offsetRef.current) * width,
             }
           },
           rubberband: true,
@@ -177,14 +183,14 @@ export const Swiper = forwardRef(
           setCurrent(i)
           props.onIndexChange?.(i)
           api.start({
-            x: (index - centeredOffset) * 100,
+            x: (index - offsetRef.current) * 100,
           })
         } else {
           const i = bound(index, 0, count - 1)
           setCurrent(i)
           props.onIndexChange?.(i)
           api.start({
-            x: (i - centeredOffset) * 100,
+            x: (i - offsetRef.current) * 100,
           })
         }
       }
@@ -216,7 +222,7 @@ export const Swiper = forwardRef(
 
       return withNativeProps(
         props,
-        <div className='adm-swiper'>
+        <div className='adm-swiper' ref={swiperRef}>
           <div
             className={classNames('adm-swiper-track', {
               'adm-swiper-track-allow-touch-move': props.allowTouchMove,
