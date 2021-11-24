@@ -37,8 +37,8 @@ export const Switch: FC<SwitchProps> = p => {
     if (disabled || props.loading || changing) {
       return
     }
-    setChanging(true)
     if (props.beforeChange) {
+      setChanging(true)
       try {
         const nextChecked = !checked
         await props.beforeChange(nextChecked)
@@ -48,6 +48,8 @@ export const Switch: FC<SwitchProps> = p => {
         setChanging(false)
         throw e
       }
+    } else {
+      setChecked(!checked)
     }
   }
 
